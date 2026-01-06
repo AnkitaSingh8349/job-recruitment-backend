@@ -19,12 +19,13 @@ load_dotenv(BASE_DIR / ".env")
 # --------------------------------------------------
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
-DEBUG = os.getenv("DEBUG", "True") == "True"
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = os.getenv(
-    "ALLOWED_HOSTS",
-    "localhost,127.0.0.1,.onrender.com"
-).split(",")
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    ".onrender.com",
+]
 
 # --------------------------------------------------
 # APPLICATIONS
@@ -51,7 +52,7 @@ INSTALLED_APPS = [
 ]
 
 # --------------------------------------------------
-# MIDDLEWARE
+# MIDDLEWARE (ORDER IMPORTANT)
 # --------------------------------------------------
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -65,16 +66,18 @@ MIDDLEWARE = [
 ]
 
 # --------------------------------------------------
-# CORS / CSRF
+# CORS / CSRF (🔥 MAIN FIX)
 # --------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "https://job-recruitment-frontend.netlify.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
+    "https://job-recruitment-frontend.netlify.app",
     "https://job-recruitment-backend-flgc.onrender.com",
 ]
 
@@ -104,26 +107,17 @@ TEMPLATES = [
 ]
 
 # --------------------------------------------------
-# DATABASE (LOCAL + RENDER / NEON)
+# DATABASE (Render / Neon)
 # --------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-if DATABASE_URL and ("localhost" not in DATABASE_URL and "127.0.0.1" not in DATABASE_URL):
-    DATABASES = {
-        "default": dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=True,
-        )
-    }
-else:
-    DATABASES = {
-        "default": dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=False,
-        )
-    }
+DATABASES = {
+    "default": dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=600,
+        ssl_require=True,
+    )
+}
 
 # --------------------------------------------------
 # PASSWORD VALIDATION
@@ -144,12 +138,11 @@ USE_I18N = True
 USE_TZ = True
 
 # --------------------------------------------------
-# STATIC FILES (IMPORTANT FOR SWAGGER)
+# STATIC FILES
 # --------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# 👇 REQUIRED for Swagger CSS/JS in DEV
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
@@ -183,7 +176,7 @@ SIMPLE_JWT = {
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 # --------------------------------------------------
-# SWAGGER (drf-yasg)
+# SWAGGER
 # --------------------------------------------------
 SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
