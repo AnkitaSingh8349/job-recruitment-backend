@@ -52,11 +52,12 @@ INSTALLED_APPS = [
 ]
 
 # --------------------------------------------------
-# MIDDLEWARE (ORDER IMPORTANT)
+# MIDDLEWARE (⚠️ ORDER IS VERY IMPORTANT)
 # --------------------------------------------------
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -66,7 +67,7 @@ MIDDLEWARE = [
 ]
 
 # --------------------------------------------------
-# CORS / CSRF (🔥 MAIN FIX)
+# CORS / CSRF
 # --------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -138,14 +139,17 @@ USE_I18N = True
 USE_TZ = True
 
 # --------------------------------------------------
-# STATIC FILES
+# STATIC FILES (⚠️ IMPORTANT FOR SWAGGER)
 # --------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-STATICFILES_DIRS = [
-    BASE_DIR / "static",
-]
+# ❌ DO NOT use STATICFILES_DIRS in production
+# STATICFILES_DIRS = [BASE_DIR / "static"]
+
+STATICFILES_STORAGE = (
+    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+)
 
 # --------------------------------------------------
 # DEFAULT PK
@@ -176,7 +180,7 @@ SIMPLE_JWT = {
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 # --------------------------------------------------
-# SWAGGER
+# SWAGGER (drf-yasg)
 # --------------------------------------------------
 SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
