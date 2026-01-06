@@ -1,6 +1,9 @@
-echo __pycache__/>>.gitignore
-echo *.pyc>>.gitignore
-echo .env>>.gitignore
-echo venv/>>.gitignore
-echo db.sqlite3>>.gitignore
-echo staticfiles/>>.gitignore
+# Virtual environment
+venv/
+
+# Env files
+.env
+
+# Python cache
+__pycache__/
+*.pyc

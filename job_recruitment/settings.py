@@ -1,12 +1,5 @@
 """
 Django settings for job_recruitment project.
-
-Compatible with:
-- Django REST Framework
-- PostgreSQL
-- JWT (SimpleJWT)
-- Google OAuth
-- React frontend (Vite)
 """
 
 from pathlib import Path
@@ -19,30 +12,24 @@ import dj_database_url
 # BASE DIR & ENV
 # --------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
-
+load_dotenv(BASE_DIR / ".env") 
 
 # --------------------------------------------------
 # SECURITY
 # --------------------------------------------------
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "django-insecure-development-key-change-this"
-)
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-]
-
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1"
+).split(",")
 
 # --------------------------------------------------
 # APPLICATIONS
 # --------------------------------------------------
 INSTALLED_APPS = [
-    # Django default
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -50,23 +37,20 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Third-party
     'rest_framework',
     'corsheaders',
     'drf_yasg',
 
-    # Local apps
     'accounts',
     'jobs',
     'applications',
 ]
 
-
 # --------------------------------------------------
-# MIDDLEWARE (ORDER MATTERS)
+# MIDDLEWARE
 # --------------------------------------------------
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # MUST be first
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -76,9 +60,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-
 # --------------------------------------------------
-# CORS & CSRF (REACT)
+# CORS / CSRF
 # --------------------------------------------------
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -90,12 +73,11 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
 ]
 
-
 # --------------------------------------------------
-# URL CONFIG
+# URL / WSGI
 # --------------------------------------------------
 ROOT_URLCONF = 'job_recruitment.urls'
-
+WSGI_APPLICATION = 'job_recruitment.wsgi.application'
 
 # --------------------------------------------------
 # TEMPLATES
@@ -116,22 +98,29 @@ TEMPLATES = [
     },
 ]
 
-
 # --------------------------------------------------
-# WSGI
+# DATABASE (LOCAL + RENDER SAFE)
 # --------------------------------------------------
-WSGI_APPLICATION = 'job_recruitment.wsgi.application'
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-
-# --------------------------------------------------
-# DATABASE (POSTGRESQL)
-# --------------------------------------------------
-DATABASES = {
-    'default': dj_database_url.parse(
-        os.getenv("DATABASE_URL")
-    )
-}
-
+if DATABASE_URL and "localhost" not in DATABASE_URL and "127.0.0.1" not in DATABASE_URL:
+    # Render / Neon (SSL REQUIRED)
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
+else:
+    # Local PostgreSQL (NO SSL)
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=False,
+        )
+    }
 
 # --------------------------------------------------
 # PASSWORD VALIDATION
@@ -143,7 +132,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
 # --------------------------------------------------
 # INTERNATIONALIZATION
 # --------------------------------------------------
@@ -152,54 +140,38 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-
 # --------------------------------------------------
 # STATIC FILES
 # --------------------------------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-
 # --------------------------------------------------
-# DEFAULT PRIMARY KEY
+# DEFAULT PK
 # --------------------------------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 # --------------------------------------------------
-# DJANGO REST FRAMEWORK
+# DRF + JWT
 # --------------------------------------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny',
-    ),
 }
 
-
-# --------------------------------------------------
-# SIMPLE JWT
-# --------------------------------------------------
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'AUTH_HEADER_TYPES': ('Bearer',),
 }
-
 
 # --------------------------------------------------
 # GOOGLE OAUTH
 # --------------------------------------------------
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-
-if not GOOGLE_CLIENT_ID:
-    raise ValueError("❌ GOOGLE_CLIENT_ID is not set in .env")
-
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 # --------------------------------------------------
-# LOGGING (OPTIONAL – GOOD FOR DEBUG)
+# LOGGING
 # --------------------------------------------------
 LOGGING = {
     "version": 1,
