@@ -18,7 +18,6 @@ load_dotenv(BASE_DIR / ".env")
 # SECURITY
 # --------------------------------------------------
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
-
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
@@ -52,7 +51,7 @@ INSTALLED_APPS = [
 ]
 
 # --------------------------------------------------
-# MIDDLEWARE (⚠️ ORDER IS VERY IMPORTANT)
+# MIDDLEWARE (ORDER MATTERS)
 # --------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -112,13 +111,22 @@ TEMPLATES = [
 # --------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-DATABASES = {
-    "default": dj_database_url.parse(
-        DATABASE_URL,
-        conn_max_age=600,
-        ssl_require=True,
-    )
-}
+if DATABASE_URL and ("localhost" in DATABASE_URL or "127.0.0.1" in DATABASE_URL):
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=False,
+        )
+    }
+else:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
 
 # --------------------------------------------------
 # PASSWORD VALIDATION
@@ -139,17 +147,17 @@ USE_I18N = True
 USE_TZ = True
 
 # --------------------------------------------------
-# STATIC FILES (⚠️ IMPORTANT FOR SWAGGER)
+# STATIC FILES (🔥 FIXED FOR SWAGGER / REDOC)
 # --------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# ❌ DO NOT use STATICFILES_DIRS in production
-# STATICFILES_DIRS = [BASE_DIR / "static"]
+# IMPORTANT: DO NOT use STATICFILES_DIRS in production
 
-STATICFILES_STORAGE = (
-    "whitenoise.storage.CompressedManifestStaticFilesStorage"
-)
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+
+# Extra safety
+WHITENOISE_MANIFEST_STRICT = False
 
 # --------------------------------------------------
 # DEFAULT PK
