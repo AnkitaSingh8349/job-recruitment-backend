@@ -7,3 +7,4 @@ python-dotenv>=1.0
 drf-yasg>=1.21
 dj-database-url>=2.1
 django-cors-headers>=4.3
+psycopg[binary]
