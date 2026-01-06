@@ -22,7 +22,7 @@ urlpatterns = [
     # APIs
     path("api/accounts/", include("accounts.urls")),
     path("api/jobs/", include("jobs.urls")),
-    path("api/applications/", include("applications.urls")),
+    
 
     # API Docs
     path("swagger/", schema_view.with_ui("swagger", cache_timeout=0)),
