@@ -12,7 +12,7 @@ import dj_database_url
 # BASE DIR & ENV
 # --------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env") 
+load_dotenv(BASE_DIR / ".env")
 
 # --------------------------------------------------
 # SECURITY
@@ -23,13 +23,14 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1"
+    "localhost,127.0.0.1,.onrender.com"
 ).split(",")
 
 # --------------------------------------------------
 # APPLICATIONS
 # --------------------------------------------------
 INSTALLED_APPS = [
+    # Django default
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -37,10 +38,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Third-party
     'rest_framework',
     'corsheaders',
     'drf_yasg',
 
+    # Local apps
     'accounts',
     'jobs',
     'applications',
@@ -71,6 +74,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
+    "https://job-recruitment-backend-flgc.onrender.com",
 ]
 
 # --------------------------------------------------
@@ -99,12 +103,12 @@ TEMPLATES = [
 ]
 
 # --------------------------------------------------
-# DATABASE (LOCAL + RENDER SAFE)
+# DATABASE (LOCAL + RENDER / NEON)
 # --------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-if DATABASE_URL and "localhost" not in DATABASE_URL and "127.0.0.1" not in DATABASE_URL:
-    # Render / Neon (SSL REQUIRED)
+if DATABASE_URL and ("localhost" not in DATABASE_URL and "127.0.0.1" not in DATABASE_URL):
+    # Render / Neon (SSL required)
     DATABASES = {
         'default': dj_database_url.parse(
             DATABASE_URL,
@@ -113,7 +117,7 @@ if DATABASE_URL and "localhost" not in DATABASE_URL and "127.0.0.1" not in DATAB
         )
     }
 else:
-    # Local PostgreSQL (NO SSL)
+    # Local PostgreSQL (No SSL)
     DATABASES = {
         'default': dj_database_url.parse(
             DATABASE_URL,
@@ -158,11 +162,15 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.AllowAny',
+    ),
 }
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 # --------------------------------------------------
@@ -171,7 +179,7 @@ SIMPLE_JWT = {
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 # --------------------------------------------------
-# LOGGING
+# LOGGING (RENDER SAFE)
 # --------------------------------------------------
 LOGGING = {
     "version": 1,
