@@ -185,7 +185,10 @@ SIMPLE_JWT = {
 # --------------------------------------------------
 # GOOGLE OAUTH
 # --------------------------------------------------
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+print(GOOGLE_CLIENT_ID)
+print(GOOGLE_CLIENT_SECRET)
 
 # --------------------------------------------------
 # SWAGGER (drf-yasg)
