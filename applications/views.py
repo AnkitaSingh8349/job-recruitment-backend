@@ -17,14 +17,18 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # ✅ Swagger / Redoc fix
+        if getattr(self, 'swagger_fake_view', False):
+            return Application.objects.none()
+
         user = self.request.user
         qs = Application.objects.select_related("job")
 
-        # ✅ Admin + Employer → all applications
+        # Admin + Employer
         if user.is_superuser or user.is_staff:
             return qs
 
-        # 👤 Normal user → only own applications
+        # Normal authenticated user
         return qs.filter(user=user)
 
     def get_serializer_class(self):
