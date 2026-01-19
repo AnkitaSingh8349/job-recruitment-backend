@@ -7,7 +7,6 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
-
 # --------------------------------------------------
 # BASE DIR & ENV
 # --------------------------------------------------
@@ -26,6 +25,15 @@ ALLOWED_HOSTS = [
     ".onrender.com",
 ]
 
+# ==================================================
+# ADMIN EMAIL (ONLY ADDITION)
+# ==================================================
+ADMIN_EMAIL = "ankita@ajxtechnologies.com"
+
+#====================================================
+#groq ai
+#=====================================================
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 # --------------------------------------------------
 # APPLICATIONS
 # --------------------------------------------------
@@ -48,6 +56,10 @@ INSTALLED_APPS = [
     "accounts",
     "jobs",
     "applications",
+    "userdashboard", 
+    'ajx_search',
+    'employer', 
+
 ]
 
 # --------------------------------------------------
@@ -111,22 +123,16 @@ TEMPLATES = [
 # --------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-if DATABASE_URL and ("localhost" in DATABASE_URL or "127.0.0.1" in DATABASE_URL):
-    DATABASES = {
-        "default": dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=False,
-        )
-    }
-else:
-    DATABASES = {
-        "default": dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=True,
-        )
-    }
+DATABASES = {
+    "default": dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=600,
+        ssl_require=not (
+            DATABASE_URL
+            and ("localhost" in DATABASE_URL or "127.0.0.1" in DATABASE_URL)
+        ),
+    )
+}
 
 # --------------------------------------------------
 # PASSWORD VALIDATION
@@ -171,14 +177,17 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",
-    ),
+  "DEFAULT_PERMISSION_CLASSES": (
+    "rest_framework.permissions.IsAuthenticated",
+),
+
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=6),   # 6 ghante
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),   # 7 din
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
@@ -215,3 +224,17 @@ LOGGING = {
         "level": "INFO",
     },
 }
+# --------------------------------------------------
+# email SMPT
+# --------------------------------------------------
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.zoho.in"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+FRONTEND_BASE_URL = "http://localhost:5173"

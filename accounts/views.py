@@ -2,7 +2,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.conf import settings
 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -15,23 +16,25 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from .serializers import RegisterSerializer
+from employer.models import Employer   # ✅ IMPORTANT IMPORT
 
 
 # ==================================================
-# ADMIN EMAIL (ONLY ADDITION)
+# ADMIN EMAIL (FROM settings.py)
 # ==================================================
-ADMIN_EMAIL = "ankita@ajxtechnologies.com"
+ADMIN_EMAIL = settings.ADMIN_EMAIL
 
 
 # ==================================================
-# REGISTER (email/password)
+# REGISTER (NORMAL USER)
 # ==================================================
 @swagger_auto_schema(
     method="post",
     request_body=RegisterSerializer,
-    responses={200: "User registered successfully"}
+    responses={201: "User registered successfully"}
 )
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def register(request):
     serializer = RegisterSerializer(data=request.data)
 
@@ -39,21 +42,27 @@ def register(request):
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
 
+        # determine role (frontend routing) but keep flags authoritative
+        role = "admin" if user.email == ADMIN_EMAIL else "user"
+
         return Response({
             "access": str(refresh.access_token),
             "refresh": str(refresh),
-            "user": {  # ✅ ADDED (NO CHANGE TO LOGIC)
+            "user": {
                 "id": user.id,
                 "email": user.email,
-                "role": "admin" if user.email == ADMIN_EMAIL else "user"
+                "role": role,
+                # Added flags for frontend + future checks
+                "is_staff": user.is_staff,
+                "is_superuser": user.is_superuser,
             }
-        })
+        }, status=status.HTTP_201_CREATED)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ==================================================
-# LOGIN (email/password)
+# LOGIN (EMAIL / PASSWORD)  ✅ FIXED
 # ==================================================
 @swagger_auto_schema(
     method="post",
@@ -61,18 +70,25 @@ def register(request):
         type=openapi.TYPE_OBJECT,
         required=["email", "password"],
         properties={
-            "email": openapi.Schema(type=openapi.TYPE_STRING, example="user@gmail.com"),
-            "password": openapi.Schema(type=openapi.TYPE_STRING, example="123456"),
+            "email": openapi.Schema(type=openapi.TYPE_STRING),
+            "password": openapi.Schema(type=openapi.TYPE_STRING),
         },
     ),
     responses={200: "Login successful"}
 )
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def login(request):
     email = request.data.get("email")
     password = request.data.get("password")
 
-    user = authenticate(username=email, password=password)
+    if not email or not password:
+        return Response(
+            {"detail": "Email and password required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    user = authenticate(request, username=email, password=password)
 
     if not user:
         return Response(
@@ -80,21 +96,33 @@ def login(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
+    # ✅ EMPLOYER CHECK (MAIN FIX)
+    is_employer = Employer.objects.filter(user=user).exists()
+
     refresh = RefreshToken.for_user(user)
 
     return Response({
         "access": str(refresh.access_token),
         "refresh": str(refresh),
-        "user": {  # ✅ ADDED
+        "user": {
             "id": user.id,
             "email": user.email,
-            "role": "admin" if user.email == ADMIN_EMAIL else "user"
+            "role": (
+                "admin"
+                if user.email == ADMIN_EMAIL
+                else "employer"
+                if is_employer
+                else "user"
+            ),
+            # Added flags for frontend + authoritative checks
+            "is_staff": user.is_staff,
+            "is_superuser": user.is_superuser,
         }
-    })
+    }, status=status.HTTP_200_OK)
 
 
 # ==================================================
-# GOOGLE LOGIN / REGISTER
+# GOOGLE LOGIN / REGISTER  ✅ FIXED
 # ==================================================
 @swagger_auto_schema(
     method="post",
@@ -111,6 +139,7 @@ def login(request):
     responses={200: "Google login successful"}
 )
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def google_auth(request):
     token = request.data.get("token")
 
@@ -150,18 +179,30 @@ def google_auth(request):
             user.set_unusable_password()
             user.save()
 
+        # ✅ EMPLOYER CHECK HERE ALSO
+        is_employer = Employer.objects.filter(user=user).exists()
+
         refresh = RefreshToken.for_user(user)
 
         return Response({
             "access": str(refresh.access_token),
             "refresh": str(refresh),
             "new_user": created,
-            "user": {  # ✅ ADDED
+            "user": {
                 "id": user.id,
                 "email": user.email,
-                "role": "admin" if user.email == ADMIN_EMAIL else "user"
+                "role": (
+                    "admin"
+                    if user.email == ADMIN_EMAIL
+                    else "employer"
+                    if is_employer
+                    else "user"
+                ),
+                # Added flags for frontend + authoritative checks
+                "is_staff": user.is_staff,
+                "is_superuser": user.is_superuser,
             }
-        })
+        }, status=status.HTTP_200_OK)
 
     except ValueError:
         return Response(

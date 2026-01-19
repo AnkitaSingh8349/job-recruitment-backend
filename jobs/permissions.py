@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.response import Response
 
@@ -10,6 +10,7 @@ from urllib.parse import quote
 from .models import Job
 from .serializers import JobSerializer
 from .email_service import send_job_notification
+from .permissions import IsAdminOrEmployer
 
 User = get_user_model()
 
@@ -17,39 +18,29 @@ User = get_user_model()
 class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
 
-    # 🔐 Permissions
+    # 🔐 Admin + Employer → create/update/delete
+    # 👤 User → view only
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAdminUser()]
+            return [IsAdminOrEmployer()]
         return [IsAuthenticated()]
 
-    # 🔍 Queryset + filters
+    # 🔍 Admin & Employer → all jobs
+    # 👤 User → only active jobs
     def get_queryset(self):
         user = self.request.user
-        queryset = Job.objects.all()
 
-        if not (user.is_staff or user.is_superuser):
-            queryset = queryset.filter(is_active=True)
+        if (
+            user.is_superuser or
+            user.is_staff or
+            getattr(user, "role", None) == "employer"
+        ):
+            return Job.objects.all()
 
-        params = self.request.query_params
-        title = params.get("title")
-        company = params.get("company")
-        location = params.get("location")
+        return Job.objects.filter(is_active=True)
 
-        if title:
-            queryset = queryset.filter(title__icontains=title)
-
-        if company:
-            queryset = queryset.filter(company_name__icontains=company)
-
-        if location:
-            queryset = queryset.filter(location__icontains=location)
-
-        return queryset
-
-    # ✅ CREATE JOB (FIXED INDENTATION)
+    # 🧠 CREATE JOB
     def perform_create(self, serializer):
         job = serializer.save(created_by=self.request.user)
 
@@ -71,7 +62,6 @@ class JobViewSet(viewsets.ModelViewSet):
         message = (
             f"New Job Opportunity 🚀\n\n"
             f"Title: {job.title}\n"
-            f"Company: {job.company_name}\n"
             f"Location: {job.location}\n"
             f"Job Type: {job.job_type}\n"
             f"Experience: {job.experience}\n"
@@ -85,14 +75,18 @@ class JobViewSet(viewsets.ModelViewSet):
             job.is_email_sent = True
             job.save(update_fields=["is_email_sent"])
 
-    # 🗑️ Soft delete
+    # ✅ SOFT DELETE (Admin + Employer)
     def destroy(self, request, *args, **kwargs):
         job = self.get_object()
 
-        if not request.user.is_staff and not request.user.is_superuser:
+        if not (
+            request.user.is_superuser or
+            request.user.is_staff or
+            getattr(request.user, "role", None) == "employer"
+        ):
             return Response(
                 {"detail": "Not allowed"},
-                status=status.HTTP_403_FORBIDDEN,
+                status=status.HTTP_403_FORBIDDEN
             )
 
         job.is_active = False
@@ -100,5 +94,5 @@ class JobViewSet(viewsets.ModelViewSet):
 
         return Response(
             {"detail": "Job deleted successfully"},
-            status=status.HTTP_200_OK,
+            status=status.HTTP_200_OK
         )

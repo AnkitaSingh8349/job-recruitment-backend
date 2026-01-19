@@ -1,7 +1,7 @@
-from django.urls import path
-from .views import pending_applications, invite_for_interview
+from rest_framework.routers import DefaultRouter
+from .views import JobViewSet
 
-urlpatterns = [
-    path("admin/applications/pending/", pending_applications),
-    path("admin/applications/invite/<int:app_id>/", invite_for_interview),
-]
+router = DefaultRouter()
+router.register(r"jobs", JobViewSet, basename="job")
+
+urlpatterns = router.urls
