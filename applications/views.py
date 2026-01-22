@@ -16,19 +16,26 @@ from .permissions import IsAdminOrEmployer
 class ApplicationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
+    # ✅ REQUIRED BY DRF (THIS FIXES THE ERROR)
+    queryset = Application.objects.all()
+
     def get_queryset(self):
-        # ✅ Swagger / Redoc fix
+        # Swagger / Redoc fix
         if getattr(self, 'swagger_fake_view', False):
             return Application.objects.none()
 
         user = self.request.user
         qs = Application.objects.select_related("job")
 
-        # Admin + Employer
-        if user.is_superuser or user.is_staff:
+        # ✅ ONLY SUPERUSER → all applications
+        if user.is_superuser:
             return qs
 
-        # Normal authenticated user
+        # ✅ Employer → only their jobs' applications
+        if hasattr(user, "employer"):
+            return qs.filter(job__created_by=user)
+
+        # ✅ Candidate → their own applications
         return qs.filter(user=user)
 
     def get_serializer_class(self):
@@ -43,7 +50,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             raise ValidationError({"detail": "Already applied"})
 
     # ==========================
-    # 🔥 ADMIN + EMPLOYER ACTIONS
+    # ADMIN + EMPLOYER ACTIONS
     # ==========================
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrEmployer])

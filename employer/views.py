@@ -1,14 +1,22 @@
+from django.db.models import Q
+from jobs.models import Application
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from userdashboard.models import Interview   
+from userdashboard.models import Interview
+
+from django.utils import timezone
+from datetime import timedelta
 
 from .serializers import EmployerRegisterSerializer
-from jobs.models import Job  
-from .models import Employer   # ✅ MISSING IMPORT FIXED
+from jobs.models import Job
+from .models import Employer
 
 
+# =========================================
+# EMPLOYER REGISTER
+# =========================================
 class EmployerRegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -53,38 +61,66 @@ class EmployerProfileView(APIView):
                 {"detail": "Employer profile not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
-            #===============================
-            #EmployerDashboardStatsView
-            #================================
 
+
+# =========================================
+# EMPLOYER DASHBOARD STATS (WITH EXPIRY DATE)
+# =========================================
 class EmployerDashboardStatsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        try:
-            employer = Employer.objects.get(user=request.user)
+        now = timezone.now()
 
-            total_jobs = Job.objects.filter(employer=employer).count()
-            applications = Application.objects.filter(
-                job__employer=employer
-            ).count()
-            interviews = Interview.objects.filter(
-                job__employer=employer
-            ).count()
-            hired = Application.objects.filter(
-                job__employer=employer,
-                status="hired"
-            ).count()
+        # ✅ Only logged-in employer jobs
+        jobs = Job.objects.filter(created_by=request.user)
 
-            return Response({
+        # ✅ Total jobs
+        total_jobs = jobs.count()
+
+        # ✅ Active jobs (No expiry OR expiry in future)
+        active_jobs = jobs.filter(
+            Q(expiry_date__isnull=True) |
+            Q(expiry_date__gte=now)
+        ).count()
+
+        # ✅ Expired jobs
+        expired_jobs = jobs.filter(
+            expiry_date__isnull=False,
+            expiry_date__lt=now
+        ).count()
+
+        # ✅ Expiring soon (next 5 days)
+        expiring_soon = jobs.filter(
+            expiry_date__isnull=False,
+            expiry_date__range=(now, now + timedelta(days=5))
+        ).count()
+
+        # ✅ Applications count
+        applications = Application.objects.filter(
+            job__created_by=request.user
+        ).count()
+
+        # ✅ Interviews count
+        interviews = Interview.objects.filter(
+            created_by=request.user
+        ).count()
+
+        # ✅ Hired candidates
+        hired = Application.objects.filter(
+            job__created_by=request.user,
+            status="hired"
+        ).count()
+
+        return Response(
+            {
                 "total_jobs": total_jobs,
+                "active_jobs": active_jobs,
+                "expired_jobs": expired_jobs,
+                "expiring_soon": expiring_soon,
                 "applications": applications,
                 "interviews": interviews,
-                "hired": hired
-            }, status=status.HTTP_200_OK)
-
-        except Employer.DoesNotExist:
-            return Response(
-                {"detail": "Employer not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+                "hired": hired,
+            },
+            status=status.HTTP_200_OK
+        )

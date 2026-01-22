@@ -1,3 +1,4 @@
+from rest_framework.views import APIView
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -12,6 +13,13 @@ from .serializers import JobSerializer
 from .email_service import send_job_notification
 
 User = get_user_model()
+class EmployerJobListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        jobs = Job.objects.filter(created_by=request.user)
+        serializer = JobSerializer(jobs, many=True)
+        return Response(serializer.data)
 
 
 class JobViewSet(viewsets.ModelViewSet):
@@ -28,11 +36,20 @@ class JobViewSet(viewsets.ModelViewSet):
     # 🔍 Queryset + filters
     def get_queryset(self):
         user = self.request.user
-        queryset = Job.objects.all()
 
-        if not (user.is_staff or user.is_superuser):
-            queryset = queryset.filter(is_active=True)
+        # 👑 Admin → all jobs
+        if user.is_staff or user.is_superuser:
+            queryset = Job.objects.all()
 
+        # 🧑‍💼 Employer → only own jobs
+        elif getattr(user, "role", None) == "employer":
+            queryset = Job.objects.filter(created_by=user)
+
+        # 👤 Candidate / others → only active jobs
+        else:
+            queryset = Job.objects.filter(is_active=True)
+
+        # 🔍 Optional filters
         params = self.request.query_params
         title = params.get("title")
         company = params.get("company")
@@ -49,7 +66,7 @@ class JobViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    # ✅ CREATE JOB (FIXED INDENTATION)
+    # ✅ CREATE JOB
     def perform_create(self, serializer):
         job = serializer.save(created_by=self.request.user)
 
